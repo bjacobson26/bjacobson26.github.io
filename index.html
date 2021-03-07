@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surfin' Baby Robot</title>
+  <link href="http://fonts.cdnfonts.com/css/cartoonic-massive" rel="stylesheet">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Cartoonic Massive Collage', sans-serif;
+    }
+
+    #awardPoints {
+      color: green;
+      position: fixed;
+      top: 40%;
+      left: 40%;
+      font-size: 16pt;
+    }
+  </style>
+</head>
+</html>
+
+  <body style="height 100vh; background: #111; text-align:center;">
+    <h1 style="color: white; text-align: center; margin-top: 20px; margin-bottom: 20px;">SURFIN' BABY ROBOT</h1>
+    <div id="high-score" style="color: white;"></div>
+    <div id="score" style="color: white; margin: 10px; font-size: 20pt;"></div>
+    <div id="awardPoints" style="color: green; position: fixed; top: 40%; left: 40%; font-size: 16pt;">
+    </div>
+    <canvas style="border: 2px solid skyblue; border-radius: 10px;" id="c" width="700" height="500"></canvas>
+
+    <script>
+      let highScore = localStorage.getItem('surfin-baby-robot-high-score')
+      if(highScore) {
+        document.getElementById('high-score').innerHTML = `High Score: ${highScore}`
+      }
+      canvas = document.getElementById('c');
+      let context = canvas.getContext('2d');
+      let score = 0;
+      let dead = false;
+
+      // Music
+      var theme = new Audio('LOOP.mp3');
+
+      const playingTheme = false
+      function playTheme() {
+        if(!playingTheme) {
+          theme.play();
+        }
+      }
+
+      function stopMusic() {
+        theme.pause();
+      }
+
+      playingEndMusic = false
+      function playEndMusic() {
+        if(!playingEndMusic) {
+          playingEndMusic = true
+          audio = new Audio('GAME_OVER.mp3')
+          audio.play()
+        }
+      }
+
+      playingPointSound = false
+      function playPointSound() {
+        if(!playingPointSound) {
+          playingPointSound = true
+          audio = new Audio('POINTS.mp3')
+          audio.play()
+          setTimeout(() => {
+            playingPointSound = false
+          }, 1000)
+        }
+      }
+
+      let alerted = false;
+
+      function setNewHighScore(score) {
+        localStorage.setItem('surfin-baby-robot-high-score', score)
+      }
+
+      function endGame() {
+        dead = true
+        stopMusic()
+
+        let alerted = false;
+
+        if(!alerted) {
+          alerted = true
+          playEndMusic()
+          if(highScore) {
+            if(parseInt(highScore, 10) < score) {
+              setNewHighScore(score)
+            }
+
+          } else {
+            setNewHighScore(score)
+          }
+          setTimeout(() => {
+            window.location.reload()
+          }, 3000)
+        }
+      }
+
+      function jump() {
+
+        playTheme()
+        if(robotY === 420 && !dead) {
+          robot.src = "SBR_JUMP.png";
+          robotDY = 12;
+          squiggle.style.visibility = "hidden"
+        }
+      }
+
+      function awardPoints(dangerThreshold) {
+        if(dead) {
+          return;
+        }
+        points = dangerThreshold * 10
+        score += points
+        let awardPointLabel = document.getElementById('awardPoints')
+        awardPointLabel.innerHTML = `+ ${points}`;
+        $('#awardPoints').show();
+
+        $('#awardPoints').fadeOut('slow')
+        playPointSound();
+      }
+
+      function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      // Context / Canvas
+      let canvasSize = window.innerWidth;
+
+      // Robot
+      let robot = new Image();
+      robot.src = "SBR.png";
+      let robotX = 100;
+      let robotDY = 0;
+      let robotY = 400;
+      let robotSize = 100;
+
+      function drawRobot() {
+        context.drawImage(robot, robotX, robotY, robotSize, robotSize - 50);
+      }
+
+      // Shark
+      let shark = new Image();
+      let sharkSize = 50;
+      shark.src = "SHARK.png"
+      let sharkX = canvasSize;
+      let sharkY = robotY + 30;
+      let sharkSpeed = 5;
+
+      function drawShark() {
+        context.drawImage(shark, sharkX, sharkY, sharkSize, sharkSize);
+
+        sharkX -= sharkSpeed;
+
+        if (sharkX < -100) {
+          sharkX = canvasSize
+
+          sharkSpeed = getRandomInt(5, 20)
+        }
+      }
+
+      // Boat
+      let boat = new Image();
+      let boatSize = 110;
+      boat.src = "BOAT.png"
+      let boatX = canvasSize + 100;
+      let boatY = 300;
+      let boatSpeed = 7;
+
+      function drawBoat() {
+        if(score < 30000) {
+          return
+        }
+        context.drawImage(boat, boatX, boatY, 300, 300);
+
+        boatX -= boatSpeed;
+
+        if (boatX < -1000) {
+          boatX = canvasSize + 100
+
+          boatSpeed = getRandomInt(5, 20)
+        }
+      }
+
+      // Sub
+      let sub = new Image();
+      let subSize = 150;
+      sub.src = "SUB_1.png"
+      let subX = canvasSize;
+      let subY = robotY - 30;
+      let subSpeed = 3;
+      let subImages = ['SUB_1.png', 'SUB_2.png', 'SUB_3.png']
+      let changeSubDirection = true;
+      let subImageIndex = 0;
+
+      function drawSub() {
+        if(score < 10000) {
+          return
+        }
+
+        context.drawImage(sub, subX, subY, subSize, subSize);
+
+        if(changeSubDirection) {
+          changeSubDirection = false;
+          setTimeout(() => {
+            if(subImageIndex == 0) {
+              subImageIndex = 1;
+            } else if (subImageIndex == 1) {
+              subImageIndex = 2;
+            } else {
+              subImageIndex = 0;
+            }
+            changeSubDirection = true;
+          }, 2000)
+        }
+        sub.src = subImages[subImageIndex];
+
+        subX -= subSpeed;
+
+        if (subX < -100) {
+          subX = canvasSize
+
+          subSpeed = getRandomInt(3, 5)
+        }
+      }
+
+
+      // Squiggle
+      squiggleX = 80;
+      function drawSquiggle() {
+        context.drawImage(squiggle, squiggleX, 455, 25, 25)
+      }
+
+      // Sun
+      let sun = new Image();
+      let sunSize = 100;
+      sun.src = "SUN.png"
+      let sunX = 550;
+      let sunY = 50;
+
+      function drawSun() {
+        context.drawImage(sun, sunX, sunY, sunSize, sunSize)
+      }
+
+      // Beach
+      let beach = new Image();
+      let beachSize = 100;
+      beach.src = "BEACH.png"
+      let beachX = 0;
+      let beachY = 300;
+
+      function drawBeach() {
+        context.drawImage(beach, beachX, beachY, 800, 150)
+      }
+
+      // Seagull
+      let seagull = new Image();
+      let seagullSize = 50;
+      seagull.src = "SEAGULL_1.png"
+      let seagullX = 800;
+      let seagullY = 100;
+      let seagullSpeed = 3;
+
+      let seagullImages = ["SEAGULL_1.png", "SEAGULL_2.png"]
+      let seagullImageIndex = 0
+
+      let changeFlap = true;
+
+      let poop = new Image();
+      let poopSize = 80;
+      let poopX = seagullX
+      let poopY = seagullY + 5
+      poop.src = "POOP.png";
+      poopSpeed = 4;
+      let poopedOn = false;
+
+      seagullPooping = false;
+
+      setInterval(() => {
+        if(score > 50000) {
+          seagullPooping = true
+        }
+      }, 10000)
+      function drawPoop() {
+        if(seagullPooping === false) {
+          return
+        }
+
+        if(!poopedOn) {
+          poopX = seagullX;
+        }
+
+        poopY += 10
+
+        if(poopY > 1000) {
+          poopY = seagullY
+        }
+
+        context.drawImage(poop, poopX, poopY, poopSize, poopSize)
+      }
+
+      function drawSeagull() {
+        if(changeFlap) {
+          changeFlap = false;
+          setTimeout(() => {
+            if(seagullImageIndex == 0) {
+              seagullImageIndex = 1;
+              seagullY = 120
+            } else {
+              seagullY = 100
+              seagullImageIndex = 0;
+            }
+            changeFlap = true;
+          }, 250)
+        }
+        seagull.src = seagullImages[seagullImageIndex]
+
+        context.drawImage(seagull, seagullX, seagullY, seagullSize, seagullSize)
+        seagullX -= seagullSpeed;
+
+        if (seagullX < -100) {
+          seagullX = canvasSize
+
+          seagullSpeed = getRandomInt(5, 10)
+        }
+      }
+
+      // Waves
+      let wave = new Image();
+      waveSize = 100;
+      wave.src = "WAVE_1.png"
+
+      const waveImages = ['WAVE_1.png', 'WAVE_2.png', 'WAVE_3.png', 'WAVE_4.png'];
+      let waveImageIndex = 0;
+
+      // Wave Crest
+      let waveCrest = new Image();
+      waveCrest.src = "CREST_1.png"
+      const crestImages = ['CREST_1.png', 'CREST_2.png', 'CREST_3.png', 'CREST_4.png', 'CREST_5.png'];
+      let crestImageIndex = 0;
+
+      // Squiggles
+      let squiggle = new Image();
+      squiggle.src = "SQUIGGLE_1.png"
+      const squiggleImages = ['SQUIGGLE_1.png', 'SQUIGGLE_2.png', 'SQUIGGLE_3.png'];
+      let squiggleImageIndex = 0;
+      let showSquiggle = false;
+
+      // Change wave image
+      setInterval(() => {
+        wave.src = waveImages[waveImageIndex]
+        waveCrest.src = crestImages[crestImageIndex]
+
+        if(showSquiggle) {
+          squiggle.src = squiggleImages[squiggleImageIndex]
+        }
+
+        if((waveImages.length - 1) === waveImageIndex) {
+          waveImageIndex = 0;
+        } else {
+          waveImageIndex += 1
+        }
+
+        if((crestImages.length - 1) === crestImageIndex) {
+          crestImageIndex = 0;
+        } else {
+          crestImageIndex += 1;
+        }
+
+        if(showSquiggle) {
+          if((squiggleImages.length - 1) === squiggleImageIndex) {
+            squiggleImageIndex = 0;
+          } else {
+            squiggleImageIndex += 1;
+          }
+        }
+      }, 120)
+
+      function checkIfSharkCrash() {
+        if(sharkX > (robotX - 10) && sharkX < (robotX + 10)) {
+          let dangerThreshold = sharkY - robotY
+
+          if(dangerThreshold < 50) {
+            endGame()
+          } else {
+            awardPoints(dangerThreshold)
+          }
+        }
+      }
+
+      function checkIfSubCrash() {
+        if(subX > (robotX - 10) && subX < (robotX + 10)) {
+          let dangerThreshold = subY - robotY
+
+          if(dangerThreshold < 50) {
+            endGame()
+          } else {
+            awardPoints(dangerThreshold)
+          }
+        }
+      }
+
+      function checkIfPoopCrash() {
+        if(poopX > (robotX - 5) && poopX < (robotX + 5)) {
+          let dangerThreshold = poopY - robotY
+
+          if(dangerThreshold < 20) {
+            poopedOn = true
+            setTimeout(() => {
+              endGame()
+            }, 2000)
+          }
+        }
+      }
+
+      function checkIfBoatCrash() {
+        if(boatX > (robotX - 5) && boatX < (robotX + 5)) {
+          let dangerThreshold = robotY - boatY
+
+          console.log(dangerThreshold)
+          if(dangerThreshold > 50) {
+            endGame()
+          } else {
+            awardPoints(dangerThreshold)
+          }
+        }
+      }
+
+      // Main Loop
+      let interval = setInterval(() => {
+        document.getElementById('score').innerHTML = score;
+
+        if(!dead) {
+          score += 1;
+        }
+
+        context.fillStyle = "skyblue";
+        context.fillRect(0, 0, canvasSize, canvasSize);
+
+        drawSun()
+        drawBeach()
+        context.drawImage(wave, 0, 400, canvasSize, 100)
+        context.drawImage(waveCrest, 0, 260, 400, 200)
+
+        if (showSquiggle) {
+          drawSquiggle()
+        }
+
+        // Gravity
+        robotY -= robotDY -= 0.5;
+        if(robotY > 420) {
+          robotY = 420;
+          showSquiggle = true
+        }
+
+        if(poopedOn) {
+          poop.src = "POOP_LAND.png";
+          poopX = robotX
+          poopY = robotY - 30
+        }
+
+        if(dead) {
+          robot.src = "CRASH_2.png"
+        } else {
+          if(robotDY < -1) {
+            robot.src = "SBR.png"
+          } else {
+            robot.src = "SBR_JUMP.png"
+            showSquiggle = false;
+          }
+        }
+
+
+        document.body.onkeydown = function(e){
+          if(e.keyCode == 65) {
+            if(robotX > 100) {
+              moveRobotLeft()
+            } else {
+              robotX = 100
+            }
+          }
+
+          // D
+          if(e.keyCode == 68) {
+            moveRobotRight()
+          }
+
+          // Spacebar
+          if([32, 87].includes(e.keyCode)){
+            jump()
+          }
+        }
+
+        moveInterval = undefined;
+
+        function moveRobotLeft() {
+          clearInterval(moveInterval)
+          moveInterval = setInterval(() => {
+            if(robotX > 100) {
+              robotX -= 1;
+              squiggleX -= 1;
+            }
+          }, 1)
+        }
+
+        function moveRobotRight() {
+          clearInterval(moveInterval)
+          moveInterval = setInterval(() => {
+            robotX += 1;
+            squiggleX += 1;
+          }, 1)
+        }
+
+
+        c.onclick = () => {
+          jump()
+        }
+
+        drawRobot()
+
+        drawShark()
+        drawSub()
+        drawSeagull()
+        drawPoop()
+        drawBoat()
+
+        checkIfSharkCrash()
+        checkIfSubCrash()
+        checkIfPoopCrash()
+        checkIfBoatCrash()
+      }, 24)
+    </script>
+  </body>
+</html>
