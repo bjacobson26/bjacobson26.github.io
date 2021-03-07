@@ -32,8 +32,10 @@
     <div id="awardPoints" style="color: green; position: fixed; top: 40%; left: 40%; font-size: 16pt;">
     </div>
     <canvas style="border: 2px solid skyblue; border-radius: 10px;" id="c" width="700" height="500"></canvas>
+  </body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
 
-    <script>
       let highScore = localStorage.getItem('surfin-baby-robot-high-score')
       if(highScore) {
         document.getElementById('high-score').innerHTML = `High Score: ${highScore}`
@@ -542,6 +544,6 @@
         checkIfPoopCrash()
         checkIfBoatCrash()
       }, 24)
-    </script>
-  </body>
+    });
+  </script>
 </html>
